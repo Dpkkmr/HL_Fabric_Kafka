@@ -1,0 +1,357 @@
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+version: '2'
+
+services:
+
+  ca.org1.example.com:
+    image: hyperledger/fabric-ca:1.3.0
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-org1
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.org1.example.com-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/fa7bcce9192da6992e0cad53e76e4d04929008c7f8394c9b6e49bab1647b397d_sk
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.org1.example.com-cert.pem
+      - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server-config/fa7bcce9192da6992e0cad53e76e4d04929008c7f8394c9b6e49bab1647b397d_sk
+    ports:
+      - "7054:7054"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ./channel/crypto-config/peerOrganizations/org1.example.com/ca/:/etc/hyperledger/fabric-ca-server-config
+    container_name: ca_peerOrg1
+
+  ca.org2.example.com:
+    image: hyperledger/fabric-ca:1.3.0
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-org2
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.org2.example.com-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/9ae1095f7c635f47499f610f449e4ac63ba3e61c8728d2ae0a84417975f9e105_sk
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.org2.example.com-cert.pem
+      - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server-config/9ae1095f7c635f47499f610f449e4ac63ba3e61c8728d2ae0a84417975f9e105_sk
+    ports:
+      - "8054:7054"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ./channel/crypto-config/peerOrganizations/org2.example.com/ca/:/etc/hyperledger/fabric-ca-server-config
+    container_name: ca_peerOrg2
+
+  zookeeper0:
+    container_name: zookeeper0
+    image: hyperledger/fabric-zookeeper
+    environment:
+      - ZOO_MY_ID=1
+      #- ZOO_SERVERS=server.1=zookeeper0:2888:3888 server.2=zookeeper1:4888:5888 server.3=zookeeper2:6888:7888
+      - ZOO_SERVERS=server.1=zookeeper0:2888:3888
+    ports:
+      - 2181:2181
+      - 2888:2888
+      - 3888:3888
+
+  # zookeeper1:
+  #   container_name: zookeeper1
+  #   image: hyperledger/fabric-zookeeper
+  #   environment:
+  #     - ZOO_MY_ID=2
+  #     - ZOO_SERVERS=server.1=zookeeper0:2888:3888 server.2=zookeeper1:4888:5888 server.3=zookeeper2:6888:7888
+  #   ports:
+  #     - 3181:3181
+  #     - 4888:4888
+  #     - 5888:5888
+
+  # zookeeper2:
+  #   container_name: zookeeper2
+  #   image: hyperledger/fabric-zookeeper
+  #   environment:
+  #     - ZOO_MY_ID=3
+  #     - ZOO_SERVERS=server.1=zookeeper0:2888:3888 server.2=zookeeper1:4888:5888 server.3=zookeeper2:6888:7888
+  #   ports:
+  #     - 4181:4181
+  #     - 6888:6888
+  #     - 7888:7888
+
+  kafka0:
+    container_name: kafka0
+    image: hyperledger/fabric-kafka
+    environment:
+      - KAFKA_PORT=9096
+      - KAFKA_BROKER_ID=0
+      - KAFKA_MIN_INSYNC_REPLICAS=1
+      - KAFKA_DEFAULT_REPLICATION_FACTOR=1
+      #- KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181,zookeeper1:3181,zookeeper2:4181
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181
+      - KAFKA_MESSAGE_MAX_BYTES=103809024 # 99 * 1024 * 1024 B
+      - KAFKA_REPLICA_FETCH_MAX_BYTES=103809024 # 99 * 1024 * 1024 B
+      - KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka0:9096
+    ports:
+      - 9096:9096
+    depends_on:
+      - zookeeper0
+      #- zookeeper1
+      #- zookeeper2
+
+  # kafka1:
+  #   container_name: kafka1
+  #   image: hyperledger/fabric-kafka
+  #   environment:
+  #     - KAFKA_PORT=9093
+  #     - KAFKA_BROKER_ID=1
+  #     - KAFKA_MIN_INSYNC_REPLICAS=1
+  #     - KAFKA_DEFAULT_REPLICATION_FACTOR=1
+  #     - KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181,zookeeper1:3181,zookeeper2:4181
+  #     - KAFKA_MESSAGE_MAX_BYTES=103809024 # 99 * 1024 * 1024 B
+  #     - KAFKA_REPLICA_FETCH_MAX_BYTES=103809024 # 99 * 1024 * 1024 B
+  #     - KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false
+  #     - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka1:9093
+  #   ports:
+  #     - 9093:9093
+  #   depends_on:
+  #     - zookeeper0
+  #     - zookeeper1
+  #     - zookeeper2
+
+  # kafka2:
+  #   container_name: kafka2
+  #   image: hyperledger/fabric-kafka
+  #   environment:
+  #     - KAFKA_PORT=9094
+  #     - KAFKA_BROKER_ID=2
+  #     - KAFKA_MIN_INSYNC_REPLICAS=1
+  #     - KAFKA_DEFAULT_REPLICATION_FACTOR=1
+  #     - KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181,zookeeper1:3181,zookeeper2:4181
+  #     - KAFKA_MESSAGE_MAX_BYTES=103809024 # 99 * 1024 * 1024 B
+  #     - KAFKA_REPLICA_FETCH_MAX_BYTES=103809024 # 99 * 1024 * 1024 B
+  #     - KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false
+  #     - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka2:9094
+  #   ports:
+  #     - 9094:9094
+  #   depends_on:
+  #     - zookeeper0
+  #     - zookeeper1
+  #     - zookeeper2
+
+  # kafka3:
+  #   container_name: kafka3
+  #   image: hyperledger/fabric-kafka
+  #   environment:
+  #     - KAFKA_PORT=9095
+  #     - KAFKA_BROKER_ID=3
+  #     - KAFKA_MIN_INSYNC_REPLICAS=1
+  #     - KAFKA_DEFAULT_REPLICATION_FACTOR=1
+  #     - KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181,zookeeper1:3181,zookeeper2:4181
+  #     - KAFKA_MESSAGE_MAX_BYTES=103809024 # 99 * 1024 * 1024 B
+  #     - KAFKA_REPLICA_FETCH_MAX_BYTES=103809024 # 99 * 1024 * 1024 B
+  #     - KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false
+  #     - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka3:9095
+  #   ports:
+  #     - 9095:9095
+  #   depends_on:
+  #     - zookeeper0
+  #     - zookeeper1
+  #     - zookeeper2
+
+  orderer.example.com:
+    container_name: orderer.example.com
+    image: hyperledger/fabric-orderer:1.3.0
+    environment:
+      - ORDERER_GENERAL_LOGLEVEL=debug
+      - ORDERER_HOST=orderer0.example.com
+      - CONFIGTX_ORDERER_ORDERERTYPE=kafka
+      - CONFIGTX_ORDERER_KAFKA_BROKERS=[kafka0:9092]
+      - ORDERER_KAFKA_RETRY_SHORTINTERVAL=1s
+      - ORDERER_KAFKA_RETRY_SHORTTOTAL=30s
+      - ORDERER_GENERAL_GENESISPROFILE=SampleInsecureKafka
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_GENESISMETHOD=file
+      - ORDERER_GENERAL_GENESISFILE=/etc/hyperledger/configtx/genesis.block
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/etc/hyperledger/crypto/orderer/msp
+      - ORDERER_GENERAL_TLS_ENABLED=false
+      - ORDERER_KAFKA_RETRY_PERIOD=3s
+      - ORDERER_KAFKA_RETRY_STOP=10s
+      - ORDERER_KAFKA_VERBOSE=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/etc/hyperledger/crypto/orderer/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/etc/hyperledger/crypto/orderer/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/etc/hyperledger/crypto/orderer/tls/ca.crt, /etc/hyperledger/crypto/peerOrg1/tls/ca.crt, /etc/hyperledger/crypto/peerOrg2/tls/ca.crt]
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderers
+    command: orderer
+    ports:
+      - 7050:7050
+    volumes:
+        - ./channel:/etc/hyperledger/configtx
+        - ./channel/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/:/etc/hyperledger/crypto/orderer
+        - ./channel/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/:/etc/hyperledger/crypto/peerOrg1
+        - ./channel/crypto-config/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/:/etc/hyperledger/crypto/peerOrg2
+    depends_on:
+      - zookeeper0
+#      - zookeeper1
+ #     - zookeeper2
+      - kafka0
+      #- kafka1
+      #- kafka2
+      #- kafka3
+  
+  couchdb0:
+    container_name: couchdb0
+    image: hyperledger/fabric-couchdb
+    # Populate the COUCHDB_USER and COUCHDB_PASSWORD to set an admin user and password
+    # for CouchDB.  This will prevent CouchDB from operating in an "Admin Party" mode.
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=Unisys*1234
+    # Comment/Uncomment the port mapping if you want to hide/expose the CouchDB service,
+    # for unisys map it to utilize Fauxton User Interface in dev environments.
+    ports:
+      - "1984:5984"
+
+  peer0.org1.example.com:
+    container_name: peer0.org1.example.com
+    extends:
+      file:   base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer0.org1.example.com
+      - CORE_PEER_LOCALMSPID=Org1MSP
+      - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer1.org1.example.com:7051      
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org1.example.com:7051
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=Unisys*1234
+    ports:
+      - 7051:7051
+      - 7053:7053
+    volumes:
+        - ./channel/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/:/etc/hyperledger/crypto/peer
+    depends_on:
+      - orderer.example.com
+      - couchdb0
+
+  couchdb1:
+    container_name: couchdb1
+    image: hyperledger/fabric-couchdb
+    # Populate the COUCHDB_USER and COUCHDB_PASSWORD to set an admin user and password
+    # for CouchDB.  This will prevent CouchDB from operating in an "Admin Party" mode.
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=Unisys*1234
+    # Comment/Uncomment the port mapping if you want to hide/expose the CouchDB service,
+    # for example map it to utilize Fauxton User Interface in dev environments.
+    ports:
+      - "2984:5984"
+
+  peer1.org1.example.com:
+    container_name: peer1.org1.example.com
+    extends:
+      file:   base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer1.org1.example.com
+      - CORE_PEER_LOCALMSPID=Org1MSP
+      - CORE_PEER_ADDRESS=peer1.org1.example.com:7051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.example.com:7051      
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.org1.example.com:7051
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb1:5984
+      # The CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME and CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD
+      # provide the credentials for ledger to connect to CouchDB.  The username and password must
+      # match the username and password set for the associated CouchDB.
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=Unisys*1234
+    ports:
+      - 7056:7051
+      - 7058:7053
+    volumes:
+        - ./channel/crypto-config/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/:/etc/hyperledger/crypto/peer
+    depends_on:
+      - orderer.example.com
+      - couchdb1
+
+  couchdb2:
+    container_name: couchdb2
+    image: hyperledger/fabric-couchdb
+    # Populate the COUCHDB_USER and COUCHDB_PASSWORD to set an admin user and password
+    # for CouchDB.  This will prevent CouchDB from operating in an "Admin Party" mode.
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=Unisys*1234
+    # Comment/Uncomment the port mapping if you want to hide/expose the CouchDB service,
+    # for example map it to utilize Fauxton User Interface in dev environments.
+    ports:
+      - "3984:5984"
+
+
+  peer0.org2.example.com:
+    container_name: peer0.org2.example.com
+    extends:
+      file:   base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer0.org2.example.com
+      - CORE_PEER_LOCALMSPID=Org2MSP
+      - CORE_PEER_ADDRESS=peer0.org2.example.com:7051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer1.org2.example.com:7051      
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org2.example.com:7051
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb2:5984
+      # The CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME and CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD
+      # provide the credentials for ledger to connect to CouchDB.  The username and password must
+      # match the username and password set for the associated CouchDB.
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=Unisys*1234
+    ports:
+      - 8051:7051
+      - 8053:7053
+    volumes:
+        - ./channel/crypto-config/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/:/etc/hyperledger/crypto/peer
+    depends_on:
+      - orderer.example.com
+      - couchdb2
+
+  couchdb3:
+    container_name: couchdb3
+    image: hyperledger/fabric-couchdb
+    # Populate the COUCHDB_USER and COUCHDB_PASSWORD to set an admin user and password
+    # for CouchDB.  This will prevent CouchDB from operating in an "Admin Party" mode.
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=Unisys*1234
+    # Comment/Uncomment the port mapping if you want to hide/expose the CouchDB service,
+    # for example map it to utilize Fauxton User Interface in dev environments.
+    ports:
+      - "4984:5984"
+
+  
+  peer1.org2.example.com:
+    container_name: peer1.org2.example.com
+    extends:
+      file:   base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer1.org2.example.com
+      - CORE_PEER_LOCALMSPID=Org2MSP
+      - CORE_PEER_ADDRESS=peer1.org2.example.com:7051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org2.example.com:7051      
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.org2.example.com:7051
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb3:5984
+      # The CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME and CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD
+      # provide the credentials for ledger to connect to CouchDB.  The username and password must
+      # match the username and password set for the associated CouchDB.
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=Unisys*1234
+    ports:
+      - 8056:7051
+      - 8058:7053
+    volumes:
+        - ./channel/crypto-config/peerOrganizations/org2.example.com/peers/peer1.org2.example.com/:/etc/hyperledger/crypto/peer
+    depends_on:
+      - orderer.example.com
+      - couchdb3
